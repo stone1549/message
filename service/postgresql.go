@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	insertMessage  = "INSERT INTO message (id, user_id, content, location) VALUES ($1, $2, $3, ST_GeomFromText($4)) RETURNING created_at"
-	selectMessage  = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at FROM message m JOIN login l on m.user_id = l.id WHERE m.id = $1"
-	selectMessages = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at FROM message m JOIN login l on m.user_id = l.id WHERE ST_DistanceSphere(m.location, $1) <= $2 AND m.created_at > $3 ORDER BY m.created_at ASC LIMIT $4"
+	insertMessage  = "INSERT INTO message (id, user_id, content, location, client_id) VALUES ($1, $2, $3, ST_GeomFromText($4), $5) RETURNING created_at"
+	selectMessage  = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id FROM message m JOIN login l on m.user_id = l.id WHERE m.id = $1"
+	selectMessages = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id FROM message m JOIN login l on m.user_id = l.id WHERE ST_DistanceSphere(m.location, $1) <= $2 AND m.created_at > $3 ORDER BY m.created_at ASC LIMIT $4"
 )
 
 type postgresqlMessageRepository struct {
@@ -24,7 +24,7 @@ func (p *postgresqlMessageRepository) AddMessage(message Message) (StoredMessage
 	id := uuid.NewV4().String()
 
 	row := p.db.QueryRow(insertMessage, id, message.Sender.Id, message.Content, fmt.Sprintf("POINT (%f %f)",
-		message.Location.Long, message.Location.Lat))
+		message.Location.Long, message.Location.Lat), message.ClientId)
 
 	var createdAt time.Time
 	err := row.Scan(&createdAt)
@@ -42,7 +42,7 @@ func (p *postgresqlMessageRepository) GetMessage(id string) (StoredMessage, erro
 	loc := make([]byte, 0)
 	var message StoredMessage
 	err := row.Scan(&message.Id, &message.Sender.Id, &message.Sender.Username, &message.Content, &loc,
-		&message.CreatedAt)
+		&message.CreatedAt, &message.ClientId)
 
 	if err == sql.ErrNoRows {
 		return StoredMessage{}, nil
@@ -88,7 +88,7 @@ func (p *postgresqlMessageRepository) GetMessagesForLocation(location Location, 
 		loc := make([]byte, 0)
 		var message StoredMessage
 		err := rows.Scan(&message.Id, &message.Sender.Id, &message.Sender.Username, &message.Content, &loc,
-			&message.CreatedAt)
+			&message.CreatedAt, &message.ClientId)
 
 		if err != nil {
 			return nil, newErrRepository(err.Error())

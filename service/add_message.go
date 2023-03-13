@@ -10,6 +10,7 @@ import (
 type addMessageRequest struct {
 	Content  string `json:"content"`
 	Location `json:"location"`
+	ClientId string `json:"clientId"`
 }
 
 func AddMessageMiddleware(next http.Handler) http.Handler {
@@ -39,6 +40,7 @@ func AddMessageMiddleware(next http.Handler) http.Handler {
 				Long: amr.Long,
 				Lat:  amr.Lat,
 			},
+			ClientId: amr.ClientId,
 		})
 
 		if err != nil {

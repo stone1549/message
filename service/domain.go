@@ -19,6 +19,7 @@ type Message struct {
 	Sender   `json:"sender"`
 	Content  string `json:"content"`
 	Location `json:"location"`
+	ClientId string `json:"clientId"`
 }
 
 type StoredMessage struct {
