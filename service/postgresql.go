@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	insertMessage  = "INSERT INTO message (id, user_id, content, location, client_id) VALUES ($1, $2, $3, ST_GeomFromText($4), $5) RETURNING created_at"
-	selectMessage  = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id FROM message m JOIN login l on m.user_id = l.id WHERE m.id = $1"
-	selectMessages = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id FROM message m JOIN login l on m.user_id = l.id WHERE ST_DistanceSphere(m.location, $1) <= $2 AND m.created_at > $3 ORDER BY m.created_at ASC LIMIT $4"
+	insertMessage  = "INSERT INTO message (id, user_id, content, location, client_id, sent_at, received_at) VALUES ($1, $2, $3, ST_GeomFromText($4), $5, $6, $7) RETURNING created_at"
+	selectMessage  = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id, m.sent_at, m.received_at FROM message m JOIN login l on m.user_id = l.id WHERE m.id = $1"
+	selectMessages = "SELECT m.id, l.id as userId, l.username, m.content, m.location, m.created_at, m.client_id, m.sent_at, m.received_at FROM message m JOIN login l on m.user_id = l.id WHERE ST_DistanceSphere(m.location, $1) <= $2 AND m.created_at > $3 ORDER BY m.created_at LIMIT $4"
 )
 
 type postgresqlMessageRepository struct {
@@ -23,8 +23,9 @@ type postgresqlMessageRepository struct {
 func (p *postgresqlMessageRepository) AddMessage(message Message) (StoredMessage, error) {
 	id := uuid.NewV4().String()
 
+	receivedAt := time.Now().UTC()
 	row := p.db.QueryRow(insertMessage, id, message.Sender.Id, message.Content, fmt.Sprintf("POINT (%f %f)",
-		message.Location.Long, message.Location.Lat), message.ClientId)
+		message.Location.Long, message.Location.Lat), message.ClientId, message.SentAt, receivedAt)
 
 	var createdAt time.Time
 	err := row.Scan(&createdAt)
@@ -33,7 +34,7 @@ func (p *postgresqlMessageRepository) AddMessage(message Message) (StoredMessage
 		return StoredMessage{}, err
 	}
 
-	return StoredMessage{id, createdAt, message}, nil
+	return StoredMessage{id, createdAt, receivedAt, message}, nil
 }
 
 func (p *postgresqlMessageRepository) GetMessage(id string) (StoredMessage, error) {
@@ -42,7 +43,7 @@ func (p *postgresqlMessageRepository) GetMessage(id string) (StoredMessage, erro
 	loc := make([]byte, 0)
 	var message StoredMessage
 	err := row.Scan(&message.Id, &message.Sender.Id, &message.Sender.Username, &message.Content, &loc,
-		&message.CreatedAt, &message.ClientId)
+		&message.CreatedAt, &message.ClientId, &message.SentAt, &message.ReceivedAt)
 
 	if err == sql.ErrNoRows {
 		return StoredMessage{}, nil
@@ -88,7 +89,7 @@ func (p *postgresqlMessageRepository) GetMessagesForLocation(location Location, 
 		loc := make([]byte, 0)
 		var message StoredMessage
 		err := rows.Scan(&message.Id, &message.Sender.Id, &message.Sender.Username, &message.Content, &loc,
-			&message.CreatedAt, &message.ClientId)
+			&message.CreatedAt, &message.ClientId, &message.SentAt, &message.ReceivedAt)
 
 		if err != nil {
 			return nil, newErrRepository(err.Error())

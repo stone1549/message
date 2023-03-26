@@ -19,16 +19,17 @@ type Message struct {
 	Sender   `json:"sender"`
 	Content  string `json:"content"`
 	Location `json:"location"`
-	ClientId string `json:"clientId"`
+	ClientId string    `json:"clientId"`
+	SentAt   time.Time `json:"sentAt"`
 }
-
 type StoredMessage struct {
-	Id        string    `json:"id"`
-	CreatedAt time.Time `json:"createdAt"`
+	Id         string    `json:"id"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ReceivedAt time.Time `json:"receivedAt"`
 	Message
 }
 
-func (s StoredMessage) Render(w http.ResponseWriter, r *http.Request) error {
+func (s StoredMessage) Render(w http.ResponseWriter, _ *http.Request) error {
 	w.WriteHeader(http.StatusOK)
 
 	return nil
